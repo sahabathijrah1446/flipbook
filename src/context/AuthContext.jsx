@@ -18,27 +18,30 @@ export const AuthProvider = ({ children }) => {
     const fetchProfile = async (userId) => {
         if (!userId) return;
         setIsRoleFetching(true);
-        console.log('DEBUG: fetchProfile started for', userId);
+        console.log('DEBUG: fetchProfile starting for ID:', userId);
         try {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('role')
-                .eq('id', userId)
-                .single();
+                .select('role, id')
+                .eq('id', userId);
 
             if (error) {
-                console.error('DEBUG: Profile Fetch ERROR:', error);
+                console.error('DEBUG: Fetch error:', error.message);
                 setRole('user');
-            } else if (data) {
-                console.log('DEBUG: Profile Fetch SUCCESS. Role found:', data.role);
-                setRole(data.role);
+            } else if (data && data.length > 0) {
+                console.log('DEBUG: Profile found in DB:', data[0]);
+                setRole(data[0].role);
+            } else {
+                console.warn('DEBUG: No profile record found for this ID in "profiles" table.');
+                setRole('user');
             }
         } catch (err) {
-            console.error('DEBUG: Profile Fetch CATCH:', err);
+            console.error('DEBUG: Profile Fetch Exception:', err);
         } finally {
             setIsRoleFetching(false);
         }
     };
+
 
     useEffect(() => {
         // 1. Initial Session Check
