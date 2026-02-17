@@ -40,27 +40,39 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const checkSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            const currentUser = session?.user ?? null;
-            setUser(currentUser);
-            if (currentUser) {
-                await fetchProfile(currentUser.id);
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                const currentUser = session?.user ?? null;
+                setUser(currentUser);
+                if (currentUser) {
+                    await fetchProfile(currentUser.id);
+                }
+            } catch (err) {
+                console.error('Check session error:', err);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
 
         checkSession();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            const currentUser = session?.user ?? null;
-            setUser(currentUser);
-            if (currentUser) {
-                await fetchProfile(currentUser.id);
-            } else {
-                setRole('user');
+            try {
+                setLoading(true);
+                const currentUser = session?.user ?? null;
+                setUser(currentUser);
+                if (currentUser) {
+                    await fetchProfile(currentUser.id);
+                } else {
+                    setRole('user');
+                }
+            } catch (err) {
+                console.error('Auth change error:', err);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         });
+
 
 
         return () => subscription.unsubscribe();
