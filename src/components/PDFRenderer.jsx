@@ -14,16 +14,15 @@ const PDFRenderer = ({ file, onProcessingComplete, onProcessingError }) => {
         setRenderedPages([]);
     };
 
-    useEffect(() => {
-        if (numPages && renderedPages.length === numPages) {
-            setIsProcessing(false);
-            onProcessingComplete(renderedPages);
-        }
-    }, [renderedPages, numPages, onProcessingComplete]);
-
     const handlePageRenderSuccess = async (page) => {
+        // Detect orientation from the first page
+        if (page.pageNumber === 1) {
+            const orientation = page.width > page.height ? 'landscape' : 'portrait';
+            // Store orientation for later use in onProcessingComplete
+            setOrientation(orientation);
+        }
+
         // Each page is rendered to a canvas by react-pdf.
-        // We can extract the image data from that canvas.
         const canvas = document.querySelector(`.pdf-page-${page.pageNumber} canvas`);
         if (canvas) {
             const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
@@ -34,6 +33,16 @@ const PDFRenderer = ({ file, onProcessingComplete, onProcessingError }) => {
             });
         }
     };
+
+    const [orientation, setOrientation] = useState('portrait');
+
+    useEffect(() => {
+        if (numPages && renderedPages.length === numPages) {
+            setIsProcessing(false);
+            onProcessingComplete(renderedPages, orientation);
+        }
+    }, [renderedPages, numPages, onProcessingComplete, orientation]);
+
 
     return (
         <div className="hidden">

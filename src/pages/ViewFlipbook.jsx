@@ -85,7 +85,11 @@ const ViewFlipbook = () => {
                 </div>
             </div>
 
-            <FlipbookViewer pages={pages} ref={flipbookRef} />
+            <FlipbookViewer
+                pages={pages}
+                ref={flipbookRef}
+                orientation={ebook?.orientation || 'portrait'}
+            />
 
             {ebook?.type === 'pdf' && pages.length === 1 && (
                 <div className="hidden">

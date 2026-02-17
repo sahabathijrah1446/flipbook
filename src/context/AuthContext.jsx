@@ -4,24 +4,64 @@ import { supabase } from '../lib/supabase';
 const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
+    console.log('--- AUTH PROVIDER INITIALIZED ---');
     const [user, setUser] = useState(null);
+    const [role, setRole] = useState('user');
     const [loading, setLoading] = useState(true);
 
+    // DEBUG: Alert to confirm code is running
+    // useEffect(() => { alert("Auth Provider Active"); }, []);
+
+    const fetchProfile = async (userId) => {
+        console.log('DEBUG: fetchProfile started for', userId);
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', userId)
+                .single();
+
+            if (error) {
+                console.error('DEBUG: Profile Fetch ERROR:', error);
+                setRole('user');
+            } else if (data) {
+                console.log('DEBUG: Profile Fetch SUCCESS. Role found:', data.role);
+                setRole(data.role);
+            } else {
+                console.warn('DEBUG: Profile Fetch returned NO DATA');
+                setRole('user');
+            }
+        } catch (err) {
+            console.error('DEBUG: Profile Fetch CATCH:', err);
+        }
+    };
+
+
+
     useEffect(() => {
-        // Check initial session
         const checkSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
-            setUser(session?.user ?? null);
+            const currentUser = session?.user ?? null;
+            setUser(currentUser);
+            if (currentUser) {
+                await fetchProfile(currentUser.id);
+            }
             setLoading(false);
         };
 
         checkSession();
 
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            const currentUser = session?.user ?? null;
+            setUser(currentUser);
+            if (currentUser) {
+                await fetchProfile(currentUser.id);
+            } else {
+                setRole('user');
+            }
             setLoading(false);
         });
+
 
         return () => subscription.unsubscribe();
     }, []);
@@ -31,10 +71,19 @@ export const AuthProvider = ({ children }) => {
     const signOut = () => supabase.auth.signOut();
 
     return (
-        <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut }}>
+        <AuthContext.Provider value={{
+            user,
+            loading,
+            role,
+            isAdmin: role === 'admin',
+            signUp,
+            signIn,
+            signOut
+        }}>
             {children}
         </AuthContext.Provider>
     );
+
 };
 
 export const useAuth = () => useContext(AuthContext);

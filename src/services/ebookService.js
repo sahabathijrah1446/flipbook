@@ -29,6 +29,7 @@ export const EbookService = {
                     title: ebookData.title,
                     file_path: ebookData.filePath,
                     pages: ebookData.pages || [], // Array of storage paths
+                    orientation: ebookData.orientation || 'portrait',
                     user_id: ebookData.userId,
                     type: ebookData.type, // 'pdf' or 'images'
                     is_public: true

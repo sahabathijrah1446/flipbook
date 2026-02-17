@@ -5,6 +5,7 @@ import PDFRenderer from '../components/PDFRenderer';
 
 const LandingPage = ({
     pages,
+    orientation,
     isProcessing,
     pdfFile,
     handleFilesSelected,
@@ -41,7 +42,7 @@ const LandingPage = ({
 
             {pages.length > 0 && (
                 <div className="w-full flex flex-col items-center animate-in zoom-in-95 duration-500">
-                    <FlipbookViewer pages={pages} ref={flipbookRef} />
+                    <FlipbookViewer pages={pages} ref={flipbookRef} orientation={orientation} />
                 </div>
             )}
 

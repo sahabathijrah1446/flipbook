@@ -1,16 +1,41 @@
 import React, { useState, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import LandingPage from './pages/LandingPage';
 import ViewFlipbook from './pages/ViewFlipbook';
 import AuthModal from './components/AuthModal';
 import ShareModal from './components/ShareModal';
+import AdminSidebar from './components/AdminSidebar';
+import AdminDashboard from './pages/AdminDashboard';
 import { useAuth } from './context/AuthContext';
 import { EbookService } from './services/ebookService';
 import { ChevronLeft, ChevronRight, Share2, RotateCcw, Loader2 } from 'lucide-react';
 
+const AdminLayout = ({ children }) => {
+  return (
+    <div className="min-h-screen bg-[#0f0f0f] flex">
+      <AdminSidebar />
+      <main className="flex-1 ml-64 min-h-screen">
+        {children}
+      </main>
+    </div>
+  );
+};
+
 function AppContent() {
-  const { user, signOut, loading: authLoading } = useAuth();
+  const { user, signOut, loading: authLoading, isAdmin } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Auto-redirect admin to dashboard if they land on home
+  React.useEffect(() => {
+    console.log('DEBUG: App Redirect Effect - isAdmin:', isAdmin, 'loading:', authLoading, 'path:', location.pathname);
+    if (!authLoading && isAdmin && location.pathname === '/') {
+      console.log('DEBUG: Triggering redirect to /admin');
+      navigate('/admin');
+    }
+  }, [isAdmin, authLoading, location.pathname, navigate]);
+
   const [pages, setPages] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [pdfFile, setPdfFile] = useState(null);
@@ -18,6 +43,7 @@ function AppContent() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [ebookId, setEbookId] = useState(null);
   const [ebookTitle, setEbookTitle] = useState('');
+  const [currentOrientation, setCurrentOrientation] = useState('portrait');
   const flipbookRef = useRef(null);
 
 
@@ -73,9 +99,10 @@ function AppContent() {
     }
   };
 
-  const handlePDFProcessingComplete = async (renderedPages) => {
+  const handlePDFProcessingComplete = async (renderedPages, orientation) => {
     // For PDF, we'll actually upload the original PDF and use renderedPages for instant preview
     setPages(renderedPages);
+    setCurrentOrientation(orientation);
 
     if (pdfFile && user) {
       try {
@@ -85,7 +112,8 @@ function AppContent() {
           title: title,
           filePath: path,
           userId: user.id,
-          type: 'pdf'
+          type: 'pdf',
+          orientation: orientation // 'portrait' or 'landscape'
         });
         setEbookId(ebook.id);
         setEbookTitle(title);
@@ -97,9 +125,11 @@ function AppContent() {
 
     }
 
+
     setIsProcessing(false);
     setPdfFile(null);
   };
+
 
   const handleReset = () => {
     setPages([]);
@@ -126,31 +156,61 @@ function AppContent() {
         title={ebookTitle}
       />
 
-      <Header
-        user={user}
-        authLoading={authLoading}
-        pages={pages}
-        onShare={handleShare}
-        onReset={handleReset}
-        onLoginClick={() => setIsAuthModalOpen(true)}
-        onLogoutClick={signOut}
-        ebookId={ebookId}
-      />
-
       <Routes>
-        <Route path="/" element={
-          <LandingPage
-            pages={pages}
-            isProcessing={isProcessing}
-            pdfFile={pdfFile}
-            handleFilesSelected={handleFilesSelected}
-            handlePDFProcessingComplete={handlePDFProcessingComplete}
-            handleReset={handleReset}
-            flipbookRef={flipbookRef}
-          />
+        {/* Admin Routes */}
+        <Route path="/admin/*" element={
+          isAdmin ? (
+            <AdminLayout>
+              <Routes>
+                <Route path="/" element={<AdminDashboard />} />
+                <Route path="/library" element={<div className="p-8 text-neutral-500">Global Library (Coming Soon)</div>} />
+                <Route path="/users" element={<div className="p-8 text-neutral-500">User Management (Coming Soon)</div>} />
+              </Routes>
+            </AdminLayout>
+          ) : (
+            <div className="min-h-screen flex items-center justify-center">
+              <div className="text-center">
+                <h1 className="text-4xl font-bold mb-4">403</h1>
+                <p className="text-neutral-500">Anda tidak memiliki akses ke halaman ini.</p>
+                <button onClick={() => window.location.href = '/'} className="mt-6 px-6 py-2 bg-blue-600 rounded-full">Pulang</button>
+              </div>
+            </div>
+          )
         } />
-        <Route path="/v/:id" element={<ViewFlipbook />} />
+
+        {/* Public/User Routes */}
+        <Route path="*" element={
+          <>
+            <Header
+              user={user}
+              authLoading={authLoading}
+              pages={pages}
+              onShare={handleShare}
+              onReset={handleReset}
+              onLoginClick={() => setIsAuthModalOpen(true)}
+              onLogoutClick={signOut}
+              ebookId={ebookId}
+              isAdmin={isAdmin}
+            />
+            <Routes>
+              <Route path="/" element={
+                <LandingPage
+                  pages={pages}
+                  orientation={currentOrientation}
+                  isProcessing={isProcessing}
+                  pdfFile={pdfFile}
+                  handleFilesSelected={handleFilesSelected}
+                  handlePDFProcessingComplete={handlePDFProcessingComplete}
+                  handleReset={handleReset}
+                  flipbookRef={flipbookRef}
+                />
+              } />
+              <Route path="/v/:id" element={<ViewFlipbook />} />
+            </Routes>
+          </>
+        } />
       </Routes>
+
 
       {/* Global Viewer Controls for Landing Page only */}
       {pages.length > 0 && window.location.pathname === '/' && (

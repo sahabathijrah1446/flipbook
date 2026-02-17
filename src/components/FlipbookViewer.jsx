@@ -13,8 +13,13 @@ const Page = forwardRef((props, ref) => {
     );
 });
 
-const FlipbookViewer = forwardRef(({ pages, width = 500, height = 700 }, ref) => {
+const FlipbookViewer = forwardRef(({ pages, orientation = 'portrait' }, ref) => {
     const flipBook = useRef(null);
+
+    // Dynamic dimensions based on orientation
+    const isLandscape = orientation === 'landscape';
+    const bookWidth = isLandscape ? 700 : 500;
+    const bookHeight = isLandscape ? 500 : 700;
 
     useImperativeHandle(ref, () => ({
         nextPage: () => flipBook.current.pageFlip().flipNext(),
@@ -32,21 +37,29 @@ const FlipbookViewer = forwardRef(({ pages, width = 500, height = 700 }, ref) =>
     }
 
     return (
-        <div className="flex justify-center items-center py-10 overflow-hidden">
+        <div className="flex justify-center items-center py-5 sm:py-10 overflow-hidden w-full min-h-[400px] sm:min-h-[600px]">
             <HTMLFlipBook
-                width={width}
-                height={height}
+                width={bookWidth}
+                height={bookHeight}
                 size="stretch"
-                minWidth={315}
-                maxWidth={1000}
-                minHeight={400}
-                maxHeight={1533}
+                minWidth={280}
+                maxWidth={isLandscape ? 1400 : 1000}
+                minHeight={350}
+                maxHeight={isLandscape ? 900 : 1533}
                 maxShadowOpacity={0.5}
-                showCover={true}
+                showCover={!isLandscape}
                 mobileScrollSupport={true}
                 className="shadow-2xl"
                 ref={flipBook}
+                usePortrait={false}
+                startPage={0}
+                drawShadow={true}
+                flippingTime={1000}
+                useMouseEvents={true}
+                clickEventForward={true}
             >
+
+
                 {pages.map((page, index) => (
                     <Page key={index} number={index + 1}>
                         <div className="w-full h-full flex items-center justify-center p-0">
